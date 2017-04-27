@@ -37,7 +37,7 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 	Transformation = CreateWindow(L"Combobox", NULL, WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWN, 20, 20, 200, 140, Main_Window, (HMENU)ID_TRANSFORM_NAME, wc.hInstance, NULL);
 
 	Info = CreateWindow(L"Edit", L"", WS_CHILD|WS_VISIBLE|WS_BORDER, 20, 0, 400, 20, Main_Window, (HMENU)ID_INFO, wc.hInstance, NULL);
-	Step = CreateWindow(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, 440, 0, 60, 20, Main_Window, (HMENU)ID_STEP, wc.hInstance, NULL);
+	Step = CreateWindow(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, 440, 0, 100, 20, Main_Window, (HMENU)ID_STEP, wc.hInstance, NULL);
 
 	Open    = CreateWindow(L"Button", L"Open", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 20, 60, 80, 30, Main_Window, (HMENU)ID_OPEN, wc.hInstance, NULL);
 	Save    = CreateWindow(L"Button", L"Save", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 20, 110, 80, 30, Main_Window, (HMENU)ID_SAVE, wc.hInstance, NULL);
@@ -163,6 +163,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 					SetWindowText(Info, msg.c_str());
 
 					gl->update_buffer();
+
+					SetWindowText(Step, to_wstring((*wave)->get_filter_value()).c_str());
 				}
 				::RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
 			} break;
@@ -177,6 +179,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 						L"; Zero % : " + to_wstring((*wave)->get_zero_prs());
 					SetWindowText(Info, msg.c_str());
 
+					SetWindowText(Step, to_wstring(0.0).c_str());
+
 					gl->update_buffer();
 				}
 				::RedrawWindow(hwnd, NULL, NULL, RDW_INVALIDATE|RDW_UPDATENOW|RDW_ERASE);
@@ -190,6 +194,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 					wstring msg = L"Zero: " + to_wstring((*wave)->get_zero_num()) +
 						L"; Zero % : " + to_wstring((*wave)->get_zero_prs());
 					SetWindowText(Info, msg.c_str());
+
+					SetWindowText(Step, to_wstring(0.0).c_str());
 
 					gl->update_buffer();
 				}
@@ -224,6 +230,34 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 				if (wave.get() != nullptr)
 					if ((*wave)->Set_w_pack()) CheckDlgButton(hwnd, ID_WPACK, BST_CHECKED);
 					else CheckDlgButton(hwnd, ID_WPACK, BST_UNCHECKED);
+			} break;
+
+			case ID_INC_STEP:
+			{
+				if (wave.get() != nullptr)
+				{
+					(*wave).inc_filter_value();
+					SetWindowText(Step, to_wstring((*wave)->get_filter_value()).c_str());
+				}
+			} break;
+
+			case ID_DEC_STEP:
+			{
+				if (wave.get() != nullptr)
+				{
+					(*wave).dec_filter_value();
+					SetWindowText(Step, to_wstring((*wave)->get_filter_value()).c_str());
+				}
+			} break;
+
+			case ID_STEP:
+			{
+				if (HIWORD(wParam) == EN_CHANGE && wave.get() != nullptr)
+				{
+					TCHAR buff[30];
+					GetWindowText(Step, buff, 30);
+					(*wave)->set_filter_value(stod(buff));
+				}
 			} break;
 		} break;
 

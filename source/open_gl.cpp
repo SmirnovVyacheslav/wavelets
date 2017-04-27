@@ -329,8 +329,6 @@ void Open_GL::create_plot()
 
 void Open_GL::update_plot()
 {
-	(*wave).set_filter_step();
-
 	wglMakeCurrent(plot_hdc, plot_hRC);
 
 	vector<int> plot_y = vector<int>(plot_data_sz);
@@ -338,12 +336,12 @@ void Open_GL::update_plot()
 
 	(*wave)->data_dispersion(plot_step_x, plot_y);
 
-	int max = static_cast<int>(*max_element(plot_y.cbegin(), plot_y.cend()));
+	plot_max = static_cast<int>(*max_element(plot_y.cbegin(), plot_y.cend()));
 
 	for (int i = 0, j = 0; j < plot_data_sz - 1; i += 2, j++)
 	{
-		plot_data[i] = vector2f(-1.0 + plot_step_x * j * 2, -0.7 + float(plot_y[j]) / max * 1.5);
-		plot_data[i + 1] = vector2f(-1.0 + plot_step_x * (j + 1) * 2, -0.7 + float(plot_y[j + 1]) / max * 1.5);
+		plot_data[i] = vector2f(plot_offset_x + plot_step_x * j * 2, plot_offset_y + float(plot_y[j]) / plot_max * plot_size);
+		plot_data[i + 1] = vector2f(plot_offset_x + plot_step_x * (j + 1) * 2, plot_offset_y + float(plot_y[j + 1]) / plot_max * plot_size);
 	}
 
 	glGenBuffers(1, &plot_VBO);
@@ -357,8 +355,58 @@ void Open_GL::render_plot()
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+	glBegin(GL_LINES);
+	glColor3d(1, 1, 1);
+	glLineWidth(3);
+
+	glVertex3d(-1.0, plot_offset_y, 0.0);
+	glVertex3d(1.0, plot_offset_y, 0.0);
+
+	glVertex3d(plot_offset_x, -1.0, 0.0);
+	glVertex3d(plot_offset_x, 1.0, 0.0);
+
+	for (int i = 1; i < 20; i++)
+	{
+		glVertex3d(plot_offset_x + 0.1 * i, plot_offset_y - 0.01, 0.0);
+		glVertex3d(plot_offset_x + 0.1 * i, plot_offset_y + 0.01, 0.0);
+
+		glVertex3d(plot_offset_x - 0.01, plot_offset_y + 0.1 * i, 0.0);
+		glVertex3d(plot_offset_x + 0.01, plot_offset_y + 0.1 * i, 0.0);
+	}
+
+	glEnd();
+
 	if (wave.get() != nullptr)
 	{
+		glColor3d(1.0, 0.0, 0.0);
+		float step = plot_max / (plot_size * 10);
+
+		for (int i = 1; i < 20; ++i)
+		{
+			if (i % 2)
+			{
+				glRasterPos3f(plot_offset_x + 0.1 * i - 0.05, plot_offset_y - 0.05, 0.0);
+				glListBase(font_list_base_2d);
+				glCallLists(7, GL_UNSIGNED_BYTE, to_string(0.1 * i).c_str());
+			}
+
+			glRasterPos3f(-1.0, plot_offset_y + 0.1 * i, 0.0);
+			glListBase(font_list_base_2d);
+			glCallLists(7, GL_UNSIGNED_BYTE, to_string(step * i).c_str());
+		}
+
+		if ((*wave)->get_filter_value() != 0.0)
+		{
+			glBegin(GL_LINES);
+			glColor3d(0.0, 0.0, 0.0);
+			glLineWidth(4);
+
+			glVertex3d(plot_offset_x + (*wave)->get_filter_value(), 1.0, 0.0);
+			glVertex3d(plot_offset_x + (*wave)->get_filter_value(), plot_offset_y, 0.0);
+
+			glEnd();
+		}
+
 		(*plot_sh).use();
 
 		glEnableVertexAttribArray(0);
@@ -375,34 +423,7 @@ void Open_GL::render_plot()
 		
 	}
 
-	glBegin(GL_LINES);
-	glColor3d(1, 1, 1);
-	glLineWidth(3);
-	glVertex3d(0.5, 0.5, 0); // первая линия
-	glVertex3d(1.0, 1.0, 0);
-	glEnd();
-
-	/*glRasterPos2i(0, 10);
-	glListBase(nFontList);
-	glCallLists(13, GL_UNSIGNED_BYTE, "Hello, world!");*/
-
-	/*glScalef(0.5f, 0.5f, 1.0f);
-	glColor3f(1.0f, 0.0f, 0.0f);
-	glPrint("042");
-	glScalef(2.0f, 2.0f, 1.0f);*/
-
-	//glCallLists(24, GL_UNSIGNED_BYTE, "Hello Windows OpenGL World");
-
-	glColor3d(1.0, 0.0, 0.0);// red
-
-	glRasterPos3f(0.0, 0.0, 0.0); // set start position
-
-	glListBase(font_list_base_2d); //start of our font display list numbers 
-
-	glCallLists(12, GL_UNSIGNED_BYTE, "Hello World.");
-
 	SwapBuffers(plot_hdc);
-	glFlush();
 }
 
 void Open_GL::resize(int cx, int cy)

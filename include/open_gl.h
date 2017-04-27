@@ -104,8 +104,12 @@ class Open_GL
 	int x, y, z;
 	float step_x, step_y;
 	
+	int plot_max;
 	const int plot_data_sz = 1000;
 	const float plot_step_x = 0.001;
+	const float plot_offset_x = -0.8;
+	const float plot_offset_y = -0.9;
+	const float plot_size = 1.7;
 	//float plot_step_y;
 
 	GLint uniform_step_x, uniform_step_y;

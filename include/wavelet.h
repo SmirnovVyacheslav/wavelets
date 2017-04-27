@@ -83,7 +83,7 @@ class Wavelet
 
 		long zero_num;
 		bool full, w_pack;
-		double max_i, zero_prs;
+		double max_i, zero_prs, filter_value;
 		int transform, direction, cur_layer, width, height,
 			row_width, c_width, c_height, layer, square;
 
@@ -113,14 +113,14 @@ class Wavelet
 	public:
 
 		Data() : full(N_FULL), w_pack(N_W_PACK), transform(0), direction(REVERSE), cur_layer(0),
-			zero_num(0), zero_prs(0.0) {}
+			zero_num(0), zero_prs(0.0), filter_value(0.0) {}
 
 		template <class U>
 		Data(const Data<U>& src) :
 			full(src.full), w_pack(src.w_pack), transform(src.transform), direction(src.direction),
 			cur_layer(src.cur_layer), width(src.width), height(src.height), row_width(src.row_width),
 			c_width(src.c_width), c_height(src.c_height), layer(src.layer), square(src.square), max_i(src.max_i),
-			zero_num(src.zero_num), zero_prs(src.zero_prs)
+			zero_num(src.zero_num), zero_prs(src.zero_prs), filter_value(src.filter_value)
 		{
 			data = vector<T>(src.data.size());
 			for (int i = 0; i < data.size(); i++)
@@ -187,6 +187,16 @@ class Wavelet
 			for (auto i : data)
 				if (abs(i) < 1.0)
 					plot_y[int(abs(i) / value)]++;
+		}
+
+		void set_filter_value(double value)
+		{
+			filter_value = value;
+		}
+
+		double get_filter_value()
+		{
+			return filter_value;
 		}
 	};
 
@@ -316,11 +326,7 @@ class Wavelet
 		image->zero_prs = double(image->zero_num) / double(image->square * image->layer);
 	}
 
-	
-
-public:
-
-	void set_filter_step()
+	void set_filter_value()
 	{
 		auto dispersion = vector<int>(10000);
 
@@ -332,15 +338,16 @@ public:
 
 		int i = next_non_zero(0);
 		int j = next_non_zero(i + 1);
-		
+
 		while (abs(1.0f - float(dispersion[j]) / float(dispersion[i])) > 0.01)
 		{
 			i = j;
 			j = next_non_zero(i + 1);
 		}
-		double p = 1.0 - float(dispersion[j]) / float(dispersion[i]);
-		int n = 15;
+		image->filter_value = static_cast<double>(i) / 10000;
 	}
+
+public:
 
 	Wavelet(const wstring file) : file(file)
 	{
@@ -390,39 +397,55 @@ public:
 			transform(seq_l, seq_h, 0, true);
 			image->full_size.clear();
 			image->w_size.clear();
+			image->set_filter_value(0.0);
 		}
 
 		time_end = clock();
 
 		set_zero_num();
 
+		if (image->direction == DIRECT) set_filter_value();
+		else image->set_filter_value(0.0);
+
 		return time_end - time_begin;
 	}
 
 	void filter()
 	{
-
-		double prs = 0.5;
-		/*vector<double> sort_data = image->data;
-		sort(sort_data.begin(), sort_data.end());
-
-		double min = 0.001;
-		double max = sort_data.back();
-		
-		double step_min = 0.001, step_max = 1;
-
-		long num = count_if(sort_data.cbegin(), sort_data.cend(), [min = min + step_min](double i) {return abs(i) <= min;});
-
-		while (abs(count_if(sort_data.cbegin(), sort_data.cend(), [min = min + step_min](double i) {return i <= min;}) - count_if(sort_data.cbegin(), sort_data.cend(), [min](double i) {return i <= min;})) < 50)
-			min += step_min;
-
-		while (abs(count_if(sort_data.cbegin(), sort_data.cend(), [max = max - step_max](double i) {return i >= max;}) - count_if(sort_data.cbegin(), sort_data.cend(), [max](double i) {return i >= max;})) < 50)
-			max -= step_max;*/
-
 		for (auto it = image->get_iterator(); *it != it.end(); ++it)
-			if (abs(**it) < 0.01)
+			if (abs(**it) < image->get_filter_value())
 				**it = 0.0;
 		set_zero_num();
+	}
+
+	void inc_filter_value()
+	{
+		double step = 0.1;
+		double curr_filter_value = image->get_filter_value();
+		
+		if (curr_filter_value != 0.0)
+		{
+			int i = 10;
+			while (curr_filter_value * i < 1.0) i *= 10;
+			step = 1.0 / i;
+		}
+
+		image->set_filter_value(curr_filter_value + step);
+	}
+
+	void dec_filter_value()
+	{
+		double step = 0.1;
+		double curr_filter_value = image->get_filter_value();
+
+		if (curr_filter_value != 0.0)
+		{
+			int i = 10;
+			while (curr_filter_value * i < 1.0) i *= 10;
+			step = 1.0 / i;
+		}
+
+		image->set_filter_value(curr_filter_value - step);
 	}
 
 	void read()
