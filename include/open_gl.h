@@ -110,6 +110,8 @@ class Open_GL
 	const float plot_offset_x = -0.8;
 	const float plot_offset_y = -0.9;
 	const float plot_size = 1.7;
+	const float plot_spread = 0.7;
+	const float plot_scale = plot_spread * 10;
 	//float plot_step_y;
 
 	GLint uniform_step_x, uniform_step_y;

@@ -36,8 +36,8 @@ int WINAPI wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLin
 
 	Transformation = CreateWindow(L"Combobox", NULL, WS_CHILD|WS_VISIBLE|WS_VSCROLL|CBS_DROPDOWN, 20, 20, 200, 140, Main_Window, (HMENU)ID_TRANSFORM_NAME, wc.hInstance, NULL);
 
-	Info = CreateWindow(L"Edit", L"", WS_CHILD|WS_VISIBLE|WS_BORDER, 20, 0, 400, 20, Main_Window, (HMENU)ID_INFO, wc.hInstance, NULL);
-	Step = CreateWindow(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, 440, 0, 100, 20, Main_Window, (HMENU)ID_STEP, wc.hInstance, NULL);
+	Info = CreateWindow(L"Edit", L"", WS_CHILD|WS_VISIBLE|WS_BORDER, 20, 0, 460, 20, Main_Window, (HMENU)ID_INFO, wc.hInstance, NULL);
+	Step = CreateWindow(L"Edit", L"", WS_CHILD | WS_VISIBLE | WS_BORDER, 500, 0, 100, 20, Main_Window, (HMENU)ID_STEP, wc.hInstance, NULL);
 
 	Open    = CreateWindow(L"Button", L"Open", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 20, 60, 80, 30, Main_Window, (HMENU)ID_OPEN, wc.hInstance, NULL);
 	Save    = CreateWindow(L"Button", L"Save", WS_CHILD|WS_VISIBLE|BS_PUSHBUTTON, 20, 110, 80, 30, Main_Window, (HMENU)ID_SAVE, wc.hInstance, NULL);
@@ -176,7 +176,8 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 					time_req = wave->transform(REVERSE);
 					wstring msg = L"Time: " + to_wstring(time_req) +
 						L"; Zero: " + to_wstring((*wave)->get_zero_num()) +
-						L"; Zero % : " + to_wstring((*wave)->get_zero_prs());
+						L"; Zero % : " + to_wstring((*wave)->get_zero_prs()) +
+						L"; Error: " + to_wstring(wave->get_error());
 					SetWindowText(Info, msg.c_str());
 
 					SetWindowText(Step, to_wstring(0.0).c_str());

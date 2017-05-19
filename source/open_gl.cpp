@@ -340,8 +340,8 @@ void Open_GL::update_plot()
 
 	for (int i = 0, j = 0; j < plot_data_sz - 1; i += 2, j++)
 	{
-		plot_data[i] = vector2f(plot_offset_x + plot_step_x * j * 2, plot_offset_y + float(plot_y[j]) / plot_max * plot_size);
-		plot_data[i + 1] = vector2f(plot_offset_x + plot_step_x * (j + 1) * 2, plot_offset_y + float(plot_y[j + 1]) / plot_max * plot_size);
+		plot_data[i] = vector2f(plot_offset_x + plot_step_x * j * 2 * plot_scale, plot_offset_y + float(plot_y[j]) / plot_max * plot_size);
+		plot_data[i + 1] = vector2f(plot_offset_x + plot_step_x * (j + 1) * 2 * plot_scale, plot_offset_y + float(plot_y[j + 1]) / plot_max * plot_size);
 	}
 
 	glGenBuffers(1, &plot_VBO);
@@ -367,8 +367,8 @@ void Open_GL::render_plot()
 
 	for (int i = 1; i < 20; i++)
 	{
-		glVertex3d(plot_offset_x + 0.1 * i, plot_offset_y - 0.01, 0.0);
-		glVertex3d(plot_offset_x + 0.1 * i, plot_offset_y + 0.01, 0.0);
+		glVertex3d(plot_offset_x + plot_spread * i, plot_offset_y - 0.01, 0.0);
+		glVertex3d(plot_offset_x + plot_spread * i, plot_offset_y + 0.01, 0.0);
 
 		glVertex3d(plot_offset_x - 0.01, plot_offset_y + 0.1 * i, 0.0);
 		glVertex3d(plot_offset_x + 0.01, plot_offset_y + 0.1 * i, 0.0);
@@ -383,12 +383,12 @@ void Open_GL::render_plot()
 
 		for (int i = 1; i < 20; ++i)
 		{
-			if (i % 2)
-			{
-				glRasterPos3f(plot_offset_x + 0.1 * i - 0.05, plot_offset_y - 0.05, 0.0);
+			//if (i % 2)
+			//{
+				glRasterPos3f(plot_offset_x + plot_spread * i - 0.05, plot_offset_y - 0.05, 0.0);
 				glListBase(font_list_base_2d);
 				glCallLists(7, GL_UNSIGNED_BYTE, to_string(0.1 * i).c_str());
-			}
+			//}
 
 			glRasterPos3f(-1.0, plot_offset_y + 0.1 * i, 0.0);
 			glListBase(font_list_base_2d);
@@ -401,8 +401,8 @@ void Open_GL::render_plot()
 			glColor3d(0.0, 0.0, 0.0);
 			glLineWidth(4);
 
-			glVertex3d(plot_offset_x + (*wave)->get_filter_value(), 1.0, 0.0);
-			glVertex3d(plot_offset_x + (*wave)->get_filter_value(), plot_offset_y, 0.0);
+			glVertex3d(plot_offset_x + (*wave)->get_filter_value() * plot_scale, 1.0, 0.0);
+			glVertex3d(plot_offset_x + (*wave)->get_filter_value() * plot_scale, plot_offset_y, 0.0);
 
 			glEnd();
 		}

@@ -21,6 +21,7 @@ using namespace std;
 #define N_W_PACK false
 
 #define MIN 0.00000001
+#define EPS 0.002
 
 extern vector<int> transform_id_map;
 extern vector<wchar_t*> transform_name;
@@ -202,6 +203,8 @@ class Wavelet
 
 	unsigned int time_begin, time_end;
 
+	double error;
+
 	unique_ptr<Data<double>> image;
 	unique_ptr<Data<double>> origin;
 
@@ -347,9 +350,25 @@ class Wavelet
 		image->filter_value = static_cast<double>(i) / 10000;
 	}
 
+	void set_error()
+	{
+		auto image_it = image->get_iterator();
+		auto origin_it = origin->get_iterator();
+
+		double error_num = 0;
+
+		for (image_it, origin_it; *image_it != image_it.end(); ++image_it, ++origin_it)
+		{
+			if (**image_it > MIN && abs(**image_it - **origin_it) > EPS)
+				error_num++;
+		}
+
+		error = error_num / (image->get_width() * image->get_height() * image->get_layer());
+	}
+
 public:
 
-	Wavelet(const wstring file) : file(file)
+	Wavelet(const wstring file) : file(file), error(0.0)
 	{
 		read();
 	}
@@ -398,6 +417,7 @@ public:
 			image->full_size.clear();
 			image->w_size.clear();
 			image->set_filter_value(0.0);
+			set_error();
 		}
 
 		time_end = clock();
@@ -518,66 +538,88 @@ public:
 
 	void write()
 	{
-		std::fstream fp;
+		int size;
+		std::fstream fp_raw, fp_arch;
 		
-		result = file + L"_result" + (image->full ? L".arch" : L".raw");
+		result = file + L"_result_raw.arch";
+		fp_raw.open(result, std::ios::out | std::ios::binary);
+		result = file + L"_result_arch.arch";
+		fp_arch.open(result, std::ios::out | std::ios::binary);
+
+		fp_raw.write((char*)&image->width, sizeof(int));
+		fp_raw.write((char*)&image->height, sizeof(int));
+		fp_raw.write((char*)&image->layer, sizeof(int));
 		
-		fp.open(result, std::ios::out | std::ios::binary);
+		fp_arch.write((char*)&image->width, sizeof(int));
+		fp_arch.write((char*)&image->height, sizeof(int));
+		fp_arch.write((char*)&image->layer, sizeof(int));
 
-		fp.write((char*)&image->width, sizeof(int));
-		fp.write((char*)&image->height, sizeof(int));
-		fp.write((char*)&image->layer, sizeof(int));
+		size = image->full ? image->full_size.size() : 0;
+		fp_raw.write((char*)&size, sizeof(int));
+		fp_arch.write((char*)&size, sizeof(int));
 
-		if (image->full)
+		for (int i = 0; i < size; i++)
 		{
-			int size = image->full_size.size();
-			fp.write((char*)&size, sizeof(int));
+			fp_raw.write((char*)&(image->full_size[i].first), sizeof(int));
+			fp_raw.write((char*)&(image->full_size[i].second), sizeof(int));
 
-			for (int i = 0; i < size; i++)
+			fp_arch.write((char*)&(image->full_size[i].first), sizeof(int));
+			fp_arch.write((char*)&(image->full_size[i].second), sizeof(int));
+		}
+
+		size = image->w_pack ? image->w_size.size() : 0;
+		fp_raw.write((char*)&size, sizeof(int));
+		fp_arch.write((char*)&size, sizeof(int));
+
+		for (int i = 0; i < size; i++)
+		{
+			fp_raw.write((char*)&(image->w_size[i].first), sizeof(int));
+			fp_raw.write((char*)&(image->w_size[i].second), sizeof(int));
+
+			fp_arch.write((char*)&(image->w_size[i].first), sizeof(int));
+			fp_arch.write((char*)&(image->w_size[i].second), sizeof(int));
+		}
+		
+		auto it = image->get_iterator();
+		for (it; *it != it.end(); ++it)
+		{
+			float value = static_cast<float>(**it);
+			fp_raw.write((char*)&(value), sizeof(float));
+		}
+
+		float offset = 0.0, buf;
+		it = image->get_iterator();
+
+		for (it; *it != it.end(); ++it)
+			if (**it < offset) offset = **it;
+
+		fp_arch.write((char*)&offset, sizeof(float));
+
+		float zero = 0.0f;
+		it = image->get_iterator();
+		for (it; *it != it.end(); ++it)
+			if (**it == 0.0) zero--;
+			else
 			{
-				fp.write((char*)&(image->full_size[i].first), sizeof(int));
-				fp.write((char*)&(image->full_size[i].second), sizeof(int));
+				buf = static_cast<float>(**it - offset);
+				if (zero != 0.0) fp_arch.write((char*)&zero, sizeof(float));
+				fp_arch.write((char*)&buf, sizeof(float));
+				zero = 0.0f;
 			}
 
-			double offset = 0.0, buf;
-			auto it = image->get_iterator();
-
-			for (it; *it != it.end(); ++it)
-				if (**it < offset) offset = **it;
-				
-			fp.write((char*)&offset, sizeof(double));
-
-			double zero = 0;
-			for (it; *it != it.end(); ++it)
-				if (**it == 0.0) zero--;
-				else
-				{
-					buf = **it - offset;
-					if (zero != 0.0) fp.write((char*)&zero, sizeof(double));
-					fp.write((char*)&buf, sizeof(double));
-					zero = 0.0;
-				}
-		}
-		else
-		{
-			short zero = 0, buf = 0;
-			auto it = image->get_iterator();
-			for (it; *it != it.end(); ++it)
-				if (**it == 0.0) zero--;
-				else
-				{
-					if (zero != 0) fp.write((char*)&zero, sizeof(short));
-					fp.write((char*)&(**it), sizeof(short));
-					zero = 0;
-				}
-		}
-
-		fp.close();
+		fp_raw.close();
+		fp_arch.close();
 	}
 
 	void source()
 	{
 		image.reset(new Data<double>(*origin));
 		set_zero_num();
+		error = 0.0;
+	}
+
+	double get_error()
+	{
+		return error;
 	}
 };
